@@ -9,12 +9,12 @@ import { getFirestore, collection, addDoc, onSnapshot, query, doc, updateDoc, de
 
 // Configuração do Firebase (substitua pelos seus dados reais)
 const firebaseConfig = {
-  apiKey: "AIzaSyAGJ_IEEuwLpl-ZZOaNumYxMwWIuIR_GAA",
-  authDomain: "wallet-a-personal.firebaseapp.com",
-  projectId: "wallet-a-personal",
-  storageBucket: "wallet-a-personal.firebasestorage.app",
-  messagingSenderId: "391893025714",
-  appId: "1:391893025714:web:71931237b58760f1ebdaab"
+  apiKey: "-",
+  authDomain: "-",
+  projectId: "-",
+  storageBucket: "-",
+  messagingSenderId: "-",
+  appId: "-"
 };
 
 // =============================================
