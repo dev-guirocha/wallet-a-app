@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Wallet.a - Gestão inteligente de finanças pessoais e contratos">
+    <title>Wallet.a - Gestão Inteligente</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    
+    <link rel="preload" href="app.js" as="script" crossorigin="anonymous">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'gray-850': '#1a202c',
+                        'gray-950': '#0d1117'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Melhorias para os checkboxes de dias da semana */
+        .weekday-checkbox:checked + label {
+            @apply border-emerald-500 bg-emerald-500/10;
+        }
+        
+        /* Spinner para loading */
+        .spinner {
+            @apply animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-emerald-500 ml-2;
+        }
+        
+        /* Estado ativo para navegação */
+        .nav-item.active {
+            @apply bg-gray-700;
+        }
+        
+        .nav-item.active svg {
+            @apply text-emerald-400;
+        }
+        
+        .nav-item.active span {
+            @apply text-white;
+        }
+        
+        /* Tabela com valores ocultos */
+        .values-hidden .value-cell span {
+            @apply opacity-0;
+        }
+        
+        .values-hidden .value-cell::after {
+            content: "•••••";
+            @apply text-gray-500;
+        }
+
+        /* Modal de confirmação */
+        .modal-open {
+            overflow: hidden;
+        }
+
+        #delete-modal {
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+
+        #delete-modal.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        #confirm-delete-btn .spinner {
+            border-top-color: #fff;
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Melhorias de acessibilidade */
+        [aria-current]:not([aria-current="false"]) {
+            @apply bg-gray-700;
+        }
+        [aria-current]:not([aria-current="false"]) svg {
+            @apply text-emerald-400;
+        }
+        [aria-current]:not([aria-current="false"]) span {
+            @apply text-white;
+        }
+        
+        /* Melhorias de contraste */
+        body {
+            @apply bg-gray-950;
+        }
+        .bg-gray-800 {
+            @apply bg-gray-850;
+        }
+        .text-gray-400 {
+            @apply text-gray-300;
+        }
+        
+        /* Foco acessível */
+        button:focus, input:focus, select:focus, textarea:focus {
+            @apply outline-none ring-2 ring-emerald-500 ring-opacity-50;
+        }
+        
+        /* Scrollbar customizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            @apply bg-gray-900;
+        }
+        ::-webkit-scrollbar-thumb {
+            @apply bg-gray-700 rounded-full;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            @apply bg-gray-600;
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-200 font-sans antialiased">
+
+    <div id="app-shell" class="hidden min-h-screen flex flex-col">
+        <header class="bg-gray-900/80 backdrop-blur-sm shadow-md sticky top-0 z-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center">
+                        <span class="font-bold text-3xl text-white">Wallet.<span class="text-emerald-400">a</span></span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <p id="user-display" class="text-sm text-gray-300 hidden sm:block truncate max-w-xs" aria-live="polite"></p>
+                        <button id="logout-btn" class="p-2 rounded-full hover:bg-gray-700 transition-colors" title="Sair" aria-label="Sair da conta">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="text-gray-300" viewBox="0 0 16 16" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
+                                <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div id="page-container" class="flex-grow pb-16">
+            <main id="dashboard-page" class="page-content hidden max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <h1 class="text-3xl font-bold text-white mb-6">Dashboard</h1>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+                    <div class="bg-gray-850 p-6 rounded-xl shadow-lg border border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-300">Total a Receber</h3>
+                        <p id="dashboard-total" class="text-4xl font-bold text-white mt-2" aria-live="polite">R$ 0,00</p>
+                    </div>
+                    <div class="bg-gray-850 p-6 rounded-xl shadow-lg border border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-300">Recebido</h3>
+                        <p id="dashboard-recebido" class="text-4xl font-bold text-emerald-400 mt-2" aria-live="polite">R$ 0,00</p>
+                    </div>
+                    <div class="bg-gray-850 p-6 rounded-xl shadow-lg border border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-300">Pendente</h3>
+                        <p id="dashboard-pendente" class="text-4xl font-bold text-amber-400 mt-2" aria-live="polite">R$ 0,00</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 bg-gray-850 p-6 rounded-xl shadow-lg border border-gray-700">
+                        <h3 class="text-xl font-semibold text-white mb-4">Pagamentos do Mês</h3>
+                        <ul id="dashboard-payments-list" class="divide-y divide-gray-700" aria-live="polite">
+                            <p class="text-gray-300 py-4">Carregando pagamentos...</p>
+                        </ul>
+                    </div>
+                    <div class="bg-gray-850 p-6 rounded-xl shadow-lg border border-gray-700">
+                        <h3 class="text-xl font-semibold text-white mb-4">Receita por Local</h3>
+                        <div class="relative h-64">
+                            <canvas id="revenueChart" aria-label="Gráfico de receita por local"></canvas>
+                            <div id="chart-loading" class="absolute inset-0 flex items-center justify-center">
+                                <div class="spinner" aria-hidden="true"></div>
+                                <span class="sr-only">Carregando gráfico...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            
+            <main id="agenda-page" class="page-content hidden max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <h1 class="text-3xl font-bold text-white mb-6">Agenda</h1>
+                
+                <div class="bg-gray-850 rounded-xl shadow-lg border border-gray-700 p-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <button id="prev-month-btn" class="p-2 rounded-full hover:bg-gray-700 transition-colors" aria-label="Mês anterior">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                        </button>
+                        <h2 id="month-year" class="text-xl font-semibold text-white">Carregando...</h2>
+                        <button id="next-month-btn" class="p-2 rounded-full hover:bg-gray-700 transition-colors" aria-label="Próximo mês">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-1 min-h-[260px]">
+                        </div>
+                </div>
+                
+                <div id="appointments-view" class="mt-6">
+                    <h3 class="text-xl font-semibold text-white" id="appointments-title">Compromissos</h3>
+                    <div id="appointments-list" class="mt-4 space-y-3" aria-live="polite">
+                        <p class="text-gray-300 py-4">Selecione um dia para ver os compromissos.</p>
+                    </div>
+                </div>
+            </main>
+            
+            <main id="contracts-page" class="page-content hidden max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                    <h1 class="text-3xl font-bold text-white">Meus Contratos</h1>
+                    <div class="w-full sm:w-auto flex items-center gap-2">
+                        <input type="text" id="search-contracts" class="w-full sm:w-64 bg-gray-800 border border-gray-600 text-white text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2.5 transition-colors" placeholder="Buscar por nome ou local..." aria-label="Buscar contratos">
+                        <button id="toggle-values-btn" class="bg-gray-800 text-gray-300 p-2.5 rounded-lg hover:bg-gray-700 flex items-center transition-colors" title="Mostrar/Esconder Valores" aria-label="Alternar visibilidade dos valores">
+                            <svg id="icon-show" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                            <svg id="icon-hide" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M3.543 5.957a9.968 9.968 0 0114.914 0A9.968 9.968 0 0120.457 12m-3.08-3.08l-9.84-9.84"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-850 rounded-xl shadow-lg border border-gray-700 overflow-x-auto">
+                    <table id="contracts-table" class="w-full text-sm text-left text-gray-300">
+                        <caption class="sr-only">Lista de contratos</caption>
+                        <thead class="text-xs text-gray-300 uppercase bg-gray-700/50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3">Cliente</th>
+                                <th scope="col" class="px-6 py-3">Local</th>
+                                <th scope="col" class="px-6 py-3">Dias de Aula</th>
+                                <th scope="col" class="px-6 py-3">Valor Mensal</th>
+                                <th scope="col" class="px-6 py-3"><span class="sr-only">Ações</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="contracts-tbody" class="divide-y divide-gray-700" aria-live="polite">
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-300">Carregando contratos...</td>
+                            </tr>
+                        </tbody>
+                        <tfoot class="bg-gray-700/50">
+                            <tr class="font-semibold text-white">
+                                <th scope="row" colspan="3" class="px-6 py-3 text-base text-right">Total (Filtro)</th>
+                                <td id="total-cell" class="px-6 py-3 text-base value-cell"><span>R$ 0,00</span></td>
+                                <td class="px-6 py-3"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </main>
+        </div>
+
+        <footer class="fixed bottom-0 left-0 z-30 w-full h-16 bg-gray-900 border-t border-gray-700">
+            <div class="grid h-full max-w-lg grid-cols-3 mx-auto font-medium">
+                <button data-page="dashboard-page" class="nav-item inline-flex flex-col items-center justify-center px-5 hover:bg-gray-800 group transition-colors" aria-label="Dashboard" aria-current="false">
+                    <svg class="w-6 h-6 mb-1 text-gray-300 group-[.active]:text-emerald-400 transition-colors" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                    </svg>
+                    <span class="text-sm text-gray-300 group-[.active]:text-white transition-colors">Dashboard</span>
+                </button>
+                <button data-page="agenda-page" class="nav-item inline-flex flex-col items-center justify-center px-5 hover:bg-gray-800 group transition-colors" aria-label="Agenda" aria-current="false">
+                    <svg class="w-6 h-6 mb-1 text-gray-300 group-[.active]:text-emerald-400 transition-colors" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                        <path clip-rule="evenodd" fill-rule="evenodd" d="M6 3a1 1 0 011-1h6a1 1 0 011 1v1h1a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2h1V3zM5 7a1 1 0 00-1 1v8a1 1 0 001 1h10a1 1 0 001-1V8a1 1 0 00-1-1H5zM8 2a.5.5 0 00-.5.5V4a.5.5 0 00.5.5h4a.5.5 0 00.5-.5V2.5A.5.5 0 0012.5 2H8z"></path>
+                    </svg>
+                    <span class="text-sm text-gray-300 group-[.active]:text-white transition-colors">Agenda</span>
+                </button>
+                <button data-page="contracts-page" class="nav-item inline-flex flex-col items-center justify-center px-5 hover:bg-gray-800 group transition-colors" aria-label="Contratos" aria-current="false">
+                    <svg class="w-6 h-6 mb-1 text-gray-300 group-[.active]:text-emerald-400 transition-colors" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                        <path clip-rule="evenodd" fill-rule="evenodd" d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H4zm10.5 5.5a.5.5 0 000-1H5a.5.5 0 000 1h9.5zM5 9.5a.5.5 0 01.5-.5h9.5a.5.5 0 010 1H5.5a.5.5 0 01-.5-.5zm0 3a.5.5 0 01.5-.5h9.5a.5.5 0 010 1H5.5a.5.5 0 01-.5-.5z"></path>
+                    </svg>
+                    <span class="text-sm text-gray-300 group-[.active]:text-white transition-colors">Contratos</span>
+                </button>
+            </div>
+        </footer>
+        
+        <button id="fab-add-client" class="hidden fixed bottom-20 right-6 bg-emerald-500 hover:bg-emerald-600 text-white font-bold w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-20 transition-colors" aria-label="Adicionar novo cliente">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        </button>
+    </div>
+    
+    <div id="landing-container" class="min-h-screen bg-gray-900">
+        </div>
+
+    <div id="auth-modal-container"></div>
+    <div id="contract-modal-container"></div>
+    
+    <div id="delete-modal-container">
+        <div id="delete-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-850 rounded-2xl shadow-2xl w-full max-w-sm border border-gray-700 p-8 text-center">
+                <h2 class="text-2xl font-bold text-white mb-4">Confirmar Exclusão</h2>
+                <p class="text-gray-300 mb-8">Tem certeza que deseja excluir este contrato? Esta ação não pode ser desfeita.</p>
+                <div class="flex justify-center gap-4">
+                    <button id="cancel-delete-btn" class="px-8 py-2.5 text-sm text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                        Cancelar
+                    </button>
+                    <button id="confirm-delete-btn" class="px-8 py-2.5 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+                        Excluir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-overlay" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden">
+        <div class="text-center">
+            <div class="spinner mx-auto mb-4" aria-hidden="true"></div>
+            <p class="text-white font-medium">Carregando...</p>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
